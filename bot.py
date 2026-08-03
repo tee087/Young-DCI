@@ -95,10 +95,13 @@ def handle_update():
         if update and "callback_query" in update:
             cq = update["callback_query"]
             cq_id = cq["id"]
+            chat_id = cq["from"]["id"]
             data = cq.get("data", "")
             if data.startswith("copy:"):
                 address = data[5:]
-                answer_callback(cq_id, f"COPIED!\n{address}")
+                url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                requests.post(url, data={"chat_id": chat_id, "text": address})
+                answer_callback(cq_id, "Sent!")
     except Exception as e:
         logger.error(f"Error handling update: {e}")
     return '', 200
