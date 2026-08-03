@@ -4,6 +4,7 @@ import requests
 import json
 from flask import Flask, request
 import logging
+import threading
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -64,6 +65,27 @@ def answer_callback(callback_id):
     resp = requests.post(url, data=data)
     logger.info(f"Callback answered: {resp.status_code}")
 
+def send_message_cycle():
+    keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
+    message_2 = get_message_2(BTC_ADDRESS)
+    
+    logger.info("Starting message cycle...")
+    
+    if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
+        logger.info("Message 1 sent successfully")
+    time.sleep(30)
+    
+    if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
+        logger.info("Message 2 sent successfully")
+    
+    return True
+
+def start_background_messenger():
+    try:
+        send_message_cycle()
+    except Exception as e:
+        logger.error(f"Error in background messenger: {e}")
+
 app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
@@ -84,20 +106,8 @@ def handle_update():
 def health():
     return 'OK', 200
 
-def send_message_cycle():
-    keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
-    message_2 = get_message_2(BTC_ADDRESS)
-    
-    logger.info("Starting message cycle...")
-    
-    if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
-        logger.info("Message 1 sent successfully")
-    time.sleep(30)
-    
-    if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
-        logger.info("Message 2 sent successfully")
-    
-    return True
+# Start sending messages when module loads (for gunicorn)
+threading.Thread(target=start_background_messenger, daemon=True).start()
 
 if __name__ == "__main__":
     logger.info("Bot starting...")
