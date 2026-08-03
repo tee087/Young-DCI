@@ -3,21 +3,27 @@ import time
 import requests
 import json
 from flask import Flask, request
+import logging
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-CHAT_ID = os.getenv("CHAT_ID", "YOUR_CHAT_ID_HERE")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 BTC_ADDRESS = os.getenv("BTC_ADDRESS", "YOUR_BTC_ADDRESS_HERE")
 PORT = int(os.getenv("PORT", 10000))
 
+if not BOT_TOKEN or not CHAT_ID:
+    logger.error("BOT_TOKEN and CHAT_ID environment variables required")
+    exit(1)
+
 MESSAGE_1 = """👤 THIS IS Mohamed I. Amin, CBS, OGW, ndc(K) 👤
    https://www.dci.go.ke/
-🔷📋 DIRECTOR - Directorate of Criminal Investigations 🔷📋
+🔷📋 DIRECTOR - Directorate of Criminal InvestigATIONS 🔷📋
 💀 WE ARE COMING FOR YOU, WE KNOW WHERE YOU ARE, YOU ARE A DEAD MAN SON 💀"""
 
 IMAGE_1 = "image.png"
 IMAGE_2 = "image copy.png"
-
-app = Flask(__name__)
 
 def get_message_2(btc_address):
     return f"""🔥 KIJANA YOU ARE SO STUPID 🔥
@@ -36,6 +42,7 @@ def get_message_2(btc_address):
 
 def send_photo(chat_id, caption, image_path, keyboard=None):
     if not os.path.exists(image_path):
+        logger.error(f"Image not found: {image_path}")
         return False
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     with open(image_path, 'rb') as f:
@@ -43,67 +50,57 @@ def send_photo(chat_id, caption, image_path, keyboard=None):
         data = {"chat_id": chat_id, "caption": caption}
         if keyboard:
             data["reply_markup"] = json.dumps(keyboard)
-        return requests.post(url, data=data, files=files).status_code == 200
-
-def set_webhook():
-    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME', 'localhost')}/{BOT_TOKEN}"
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
-    data = {"url": webhook_url}
-    requests.post(url, data=data)
+        resp = requests.post(url, data=data, files=files)
+        if resp.status_code == 200:
+            logger.info(f"Message sent to {chat_id}")
+            return True
+        else:
+            logger.error(f"Failed: {resp.text}")
+            return False
 
 def answer_callback(callback_id):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
     data = {"callback_query_id": callback_id, "text": "COPIED", "show_alert": True}
-    requests.post(url, data=data)
+    resp = requests.post(url, data=data)
+    logger.info(f"Callback answered: {resp.status_code}")
 
-def send_initial_messages():
-    keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
-    message_2 = get_message_2(BTC_ADDRESS)
-    
-    if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 1 sent")
-    
-    time.sleep(30)
-    
-    if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 2 sent")
+app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
 def handle_update():
-    update = request.get_json()
-    
-    if "callback_query" in update:
-        cq = update["callback_query"]
-        cq_id = cq["id"]
-        data = cq["data"]
-        if data.startswith("copy:"):
-            answer_callback(cq_id)
-    
+    try:
+        update = request.get_json()
+        if update and "callback_query" in update:
+            cq = update["callback_query"]
+            cq_id = cq["id"]
+            data = cq.get("data", "")
+            if data.startswith("copy:"):
+                answer_callback(cq_id)
+    except Exception as e:
+        logger.error(f"Error handling update: {e}")
     return '', 200
 
-@app.route('/health')
+@app.route('/health', methods=['GET'])
 def health():
-    return '', 200
+    return 'OK', 200
 
-def start_loop():
+def send_message_cycle():
     keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
     message_2 = get_message_2(BTC_ADDRESS)
     
-    while True:
-        if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 1 sent")
-        
-        time.sleep(30)
-        
-        if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 2 sent")
-        
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Waiting 3 hours until next cycle")
-        time.sleep(10800)
+    logger.info("Starting message cycle...")
+    
+    if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
+        logger.info("Message 1 sent successfully")
+    time.sleep(30)
+    
+    if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
+        logger.info("Message 2 sent successfully")
+    
+    return True
 
 if __name__ == "__main__":
-    set_webhook()
-    send_initial_messages()
-    import threading
-    threading.Thread(target=start_loop, daemon=True).start()
+    logger.info("Bot starting...")
+    send_message_cycle()
+    logger.info("Starting Flask server...")
     app.run(host='0.0.0.0', port=PORT)
