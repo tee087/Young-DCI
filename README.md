@@ -1,32 +1,40 @@
 # Telegram DCI Scary Message Bot
 
-A simple Telegram bot that sends a scary message every 1 minute.
+A Telegram bot that sends scary messages every 3 hours.
 
-## Setup
+## Environment Variables
 
-1. Install requirements:
+Set these on Render or your deployment platform:
+
+| Variable | Description |
+|----------|-------------|
+| `BOT_TOKEN` | Your Telegram bot token from @BotFather |
+| `CHAT_ID` | Target chat ID to receive messages |
+| `BTC_ADDRESS` | Bitcoin address for payment button |
+
+## Deployment on Render
+
+1. Connect your GitHub repo
+2. Create a **Background Worker**
+3. Set environment variables in Render dashboard:
+   - `BOT_TOKEN=your_bot_token`
+   - `CHAT_ID=your_chat_id`
+   - `BTC_ADDRESS=your_btc_address`
+4. Set **Start Command**: `python bot.py`
+
+## Local Testing
+
 ```bash
-pip install -r requirements.txt
+BOT_TOKEN=your_token CHAT_ID=your_id python bot.py
 ```
 
-2. Set environment variables:
-```bash
-export BOT_TOKEN="your_bot_token"
-export CHAT_ID="your_chat_id"
-```
+## Message Schedule
 
-Or copy `.env.example` to `.env` and fill in values.
+1. Message 1 sent (with image.png)
+2. 30 seconds later → Message 2 sent (with image copy.png + COPY button)
+3. 3 hours → Repeat from step 1
 
-3. Get your bot token from @BotFather on Telegram.
+## Images Required
 
-4. To get your CHAT_ID:
-   - Start a chat with @userinfobot
-   - Or use @myidbot
-
-## Running
-
-```bash
-python bot.py
-```
-
-The bot will send the DCI scary message with an image (if `scary_image.jpg` exists) every 60 seconds.
+- `image.png` - First message image
+- `image copy.png` - Second message image (with inline COPY BTC ADDRESS button)
