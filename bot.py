@@ -2,10 +2,12 @@ import os
 import time
 import requests
 import json
+from flask import Flask, request
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 CHAT_ID = os.getenv("CHAT_ID", "YOUR_CHAT_ID_HERE")
 BTC_ADDRESS = os.getenv("BTC_ADDRESS", "YOUR_BTC_ADDRESS_HERE")
+PORT = int(os.getenv("PORT", 10000))
 
 MESSAGE_1 = """👤 THIS IS Mohamed I. Amin, CBS, OGW, ndc(K) 👤
    https://www.dci.go.ke/
@@ -14,6 +16,8 @@ MESSAGE_1 = """👤 THIS IS Mohamed I. Amin, CBS, OGW, ndc(K) 👤
 
 IMAGE_1 = "image.png"
 IMAGE_2 = "image copy.png"
+
+app = Flask(__name__)
 
 def get_message_2(btc_address):
     return f"""🔥 KIJANA YOU ARE SO STUPID 🔥
@@ -41,44 +45,47 @@ def send_photo(chat_id, caption, image_path, keyboard=None):
             data["reply_markup"] = json.dumps(keyboard)
         return requests.post(url, data=data, files=files).status_code == 200
 
-def get_updates(offset=None):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
-    data = {"offset": offset}
-    return requests.post(url, data=data).json()
+def set_webhook():
+    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME', 'localhost')}/{BOT_TOKEN}"
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+    data = {"url": webhook_url}
+    requests.post(url, data=data)
 
 def answer_callback(callback_id):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
     data = {"callback_query_id": callback_id, "text": "COPIED", "show_alert": True}
     requests.post(url, data=data)
 
-def process_callbacks(last_update_id):
-    try:
-        resp = get_updates(offset=last_update_id)
-        new_last = last_update_id
-        for update in resp.get("result", []):
-            if "callback_query" in update:
-                cq = update["callback_query"]
-                cq_id = cq["id"]
-                data = cq["data"]
-                if data.startswith("copy:"):
-                    answer_callback(cq_id)
-            if "update_id" in update:
-                new_last = update["update_id"] + 1
-        return new_last
-    except:
-        return last_update_id
+def send_initial_messages():
+    keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
+    message_2 = get_message_2(BTC_ADDRESS)
+    
+    if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 1 sent")
+    
+    time.sleep(30)
+    
+    if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 2 sent")
 
-def main():
-    print(f"Bot started. Sending messages: Msg1 -> 30 sec -> Msg2 -> 3 hours -> repeat")
+@app.route('/', methods=['POST'])
+def handle_update():
+    update = request.get_json()
     
-    last_update_id = 0
-    try:
-        resp = get_updates()
-        if resp.get("ok") and resp.get("result"):
-            last_update_id = resp["result"][-1].get("update_id", 0) + 1
-    except:
-        pass
+    if "callback_query" in update:
+        cq = update["callback_query"]
+        cq_id = cq["id"]
+        data = cq["data"]
+        if data.startswith("copy:"):
+            answer_callback(cq_id)
     
+    return '', 200
+
+@app.route('/health')
+def health():
+    return '', 200
+
+def start_loop():
     keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
     message_2 = get_message_2(BTC_ADDRESS)
     
@@ -86,17 +93,17 @@ def main():
         if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 1 sent")
         
-        last_update_id = process_callbacks(last_update_id)
-        
         time.sleep(30)
         
         if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 2 sent")
         
-        last_update_id = process_callbacks(last_update_id)
-        
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Waiting 3 hours until next cycle")
         time.sleep(10800)
 
 if __name__ == "__main__":
-    main()
+    set_webhook()
+    send_initial_messages()
+    import threading
+    threading.Thread(target=start_loop, daemon=True).start()
+    app.run(host='0.0.0.0', port=PORT)
