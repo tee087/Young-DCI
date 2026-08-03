@@ -15,12 +15,15 @@ Set these on Render or your deployment platform:
 ## Deployment on Render
 
 1. Connect your GitHub repo
-2. Create a **Background Worker**
-3. Set environment variables in Render dashboard:
+2. Create a **Web Service** (not Background Worker)
+3. Set Runtime: Python 3.x
+4. Set Environment Variables in Render dashboard:
    - `BOT_TOKEN=your_bot_token`
    - `CHAT_ID=your_chat_id`
    - `BTC_ADDRESS=your_btc_address`
-4. Set **Start Command**: `python bot.py`
+5. Build Command: `pip install -r requirements.txt`
+6. Start Command: `gunicorn -b 0.0.0.0:10000 bot:app`
+7. Deploy → First messages sent immediately
 
 ## Local Testing
 
