@@ -26,6 +26,23 @@ MESSAGE_1 = """👤 THIS IS Mohamed I. Amin, CBS, OGW, ndc(K) 👤
 IMAGE_1 = "image.png"
 IMAGE_2 = "image copy.png"
 
+# COPY PAGE HTML - hosted at /copy
+COPY_PAGE = f"""<!DOCTYPE html>
+<html>
+<head><title>Copy BTC Address</title></head>
+<body>
+<script>
+ navigator.clipboard.writeText("{BTC_ADDRESS}").then(()=>{{
+  alert("✅ COPIED: {BTC_ADDRESS}");
+  window.close();
+}}, (e)=>{{
+  alert("❌ Copy failed. Please copy manually: \\n{BTC_ADDRESS}");
+}});
+</script>
+<p>Copying BTC address...</p>
+</body>
+</html>"""
+
 def get_message_2(btc_address):
     return f"""🔥 KIJANA YOU ARE SO STUPID 🔥
 
@@ -61,12 +78,14 @@ def send_photo(chat_id, caption, image_path, keyboard=None):
 
 def answer_callback(callback_id):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
-    data = {"callback_query_id": callback_id, "text": "COPIED", "show_alert": True}
+    data = {"callback_query_id": callback_id, "text": "COPIED!", "show_alert": True}
     resp = requests.post(url, data=data)
     logger.info(f"Callback answered: {resp.status_code}")
 
 def send_message_cycle():
-    keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
+    # URL button that opens the copy page
+    copy_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME', 'localhost')}/copy?address={BTC_ADDRESS}"
+    keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "url": copy_url}]]}
     message_2 = get_message_2(BTC_ADDRESS)
     
     logger.info("Starting message cycle...")
@@ -95,18 +114,19 @@ def handle_update():
         if update and "callback_query" in update:
             cq = update["callback_query"]
             cq_id = cq["id"]
-            data = cq.get("data", "")
-            if data.startswith("copy:"):
-                answer_callback(cq_id)
+            answer_callback(cq_id)
     except Exception as e:
         logger.error(f"Error handling update: {e}")
     return '', 200
+
+@app.route('/copy')
+def copy_page():
+    return COPY_PAGE, 200, {'Content-Type': 'text/html'}
 
 @app.route('/health', methods=['GET'])
 def health():
     return 'OK', 200
 
-# Start sending messages when module loads (for gunicorn)
 threading.Thread(target=start_background_messenger, daemon=True).start()
 
 if __name__ == "__main__":
