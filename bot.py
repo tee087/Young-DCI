@@ -12,7 +12,11 @@ MESSAGE_1 = """👤 THIS IS Mohamed I. Amin, CBS, OGW, ndc(K) 👤
 🔷📋 DIRECTOR - Directorate of Criminal Investigations 🔷📋
 💀 WE ARE COMING FOR YOU, WE KNOW WHERE YOU ARE, YOU ARE A DEAD MAN SON 💀"""
 
-MESSAGE_2 = """🔥 KIJANA YOU ARE SO STUPID 🔥
+IMAGE_1 = "image.png"
+IMAGE_2 = "image copy.png"
+
+def get_message_2(btc_address):
+    return f"""🔥 KIJANA YOU ARE SO STUPID 🔥
 
 💀 MAISHA YAKO ENDS TONIGHT 💀
 
@@ -20,14 +24,11 @@ MESSAGE_2 = """🔥 KIJANA YOU ARE SO STUPID 🔥
 
 💰 MAKE A PAYMENT OF 20,000 KSH ($154.5) 💰
 
-📍 BTC ADDRESS: 19QjFZbTzEd8VPvkVdr2KzTVzC3Zq2qR9M 📍
+📍 BTC ADDRESS: {btc_address} 📍
 
 🚨 WE WILL CANCEL AND ERASE ALL TRACES OF THE INVESTIGATION 🚨
 
 💀 OR ELSE... THAT'S THE END OF YOU 💀"""
-
-IMAGE_1 = "image.png"
-IMAGE_2 = "image copy.png"
 
 def send_photo(chat_id, caption, image_path, keyboard=None):
     if not os.path.exists(image_path):
@@ -79,6 +80,7 @@ def main():
         pass
     
     keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
+    message_2 = get_message_2(BTC_ADDRESS)
     
     while True:
         if send_photo(CHAT_ID, MESSAGE_1, IMAGE_1):
@@ -88,7 +90,7 @@ def main():
         
         time.sleep(30)
         
-        if send_photo(CHAT_ID, MESSAGE_2, IMAGE_2, keyboard_2):
+        if send_photo(CHAT_ID, message_2, IMAGE_2, keyboard_2):
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Message 2 sent")
         
         last_update_id = process_callbacks(last_update_id)
