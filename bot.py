@@ -124,16 +124,11 @@ def handle_update():
 def health():
     return 'OK', 200
 
-@app.before_first_request
-def setup():
-    logger.info("Setting webhook...")
-    set_webhook()
-
+# Set webhook on import and when running directly
+set_webhook()
 threading.Thread(target=start_background_messenger, daemon=True).start()
 
 if __name__ == "__main__":
     logger.info("Bot starting...")
-    set_webhook()
-    send_message_cycle()
     logger.info("Starting Flask server...")
     app.run(host='0.0.0.0', port=PORT)
