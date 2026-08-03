@@ -59,11 +59,26 @@ def send_photo(chat_id, caption, image_path, keyboard=None):
             logger.error(f"Failed: {resp.text}")
             return False
 
-def answer_callback(callback_id, text="COPIED"):
+def answer_callback(callback_id, text="Sent!"):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
-    data = {"callback_query_id": callback_id, "text": text, "show_alert": True}
+    data = {"callback_query_id": callback_id, "text": text}
     resp = requests.post(url, data=data)
     logger.info(f"Callback answered: {resp.status_code}")
+
+def send_btc_address(chat_id, address):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {"chat_id": chat_id, "text": address}
+    resp = requests.post(url, data=data)
+    logger.info(f"BTc address sent: {resp.status_code}")
+
+def set_webhook():
+    hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+    if hostname:
+        webhook_url = f"https://{hostname}/{BOT_TOKEN}"
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+        data = {"url": webhook_url}
+        resp = requests.post(url, data=data)
+        logger.info(f"Webhook set: {resp.json()}")
 
 def send_message_cycle():
     keyboard_2 = {"inline_keyboard": [[{"text": "📋 COPY BTC ADDRESS", "callback_data": f"copy:{BTC_ADDRESS}"}]]}
@@ -99,9 +114,8 @@ def handle_update():
             data = cq.get("data", "")
             if data.startswith("copy:"):
                 address = data[5:]
-                url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-                requests.post(url, data={"chat_id": chat_id, "text": address})
-                answer_callback(cq_id, "Sent!")
+                send_btc_address(chat_id, address)
+                answer_callback(cq_id, "Copied!")
     except Exception as e:
         logger.error(f"Error handling update: {e}")
     return '', 200
@@ -110,10 +124,16 @@ def handle_update():
 def health():
     return 'OK', 200
 
+@app.before_first_request
+def setup():
+    logger.info("Setting webhook...")
+    set_webhook()
+
 threading.Thread(target=start_background_messenger, daemon=True).start()
 
 if __name__ == "__main__":
     logger.info("Bot starting...")
+    set_webhook()
     send_message_cycle()
     logger.info("Starting Flask server...")
     app.run(host='0.0.0.0', port=PORT)
