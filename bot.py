@@ -3,9 +3,9 @@ import time
 import requests
 import json
 
-BOT_TOKEN = "8788152580:AAGKnqqc91PxIUe7Nu2CeYAmHgBt7gWJpdM"
-CHAT_ID = "7867527304"
-BTC_ADDRESS = "19QjFZbTzEd8VPvkVdr2KzTVzC3Zq2qR9M"
+BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+CHAT_ID = os.getenv("CHAT_ID", "YOUR_CHAT_ID_HERE")
+BTC_ADDRESS = os.getenv("BTC_ADDRESS", "YOUR_BTC_ADDRESS_HERE")
 
 MESSAGE_1 = """👤 THIS IS Mohamed I. Amin, CBS, OGW, ndc(K) 👤
    https://www.dci.go.ke/
