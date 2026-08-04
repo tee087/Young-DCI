@@ -103,8 +103,10 @@ def start_background_messenger():
 
 app = Flask(__name__)
 
-@app.route('/', methods=['POST'])
+@app.route('/', methods=['POST', 'GET'])
 def handle_update():
+    if request.method == 'GET':
+        return '', 200
     try:
         update = request.get_json()
         if update and "callback_query" in update:
@@ -118,6 +120,23 @@ def handle_update():
                 answer_callback(cq_id, "Copied!")
     except Exception as e:
         logger.error(f"Error handling update: {e}")
+    return '', 200
+
+@app.route('/' + BOT_TOKEN, methods=['POST'])
+def webhook():
+    try:
+        update = request.get_json()
+        if update and "callback_query" in update:
+            cq = update["callback_query"]
+            cq_id = cq["id"]
+            chat_id = cq["from"]["id"]
+            data = cq.get("data", "")
+            if data.startswith("copy:"):
+                address = data[5:]
+                send_btc_address(chat_id, address)
+                answer_callback(cq_id, "Copied!")
+    except Exception as e:
+        logger.error(f"Error handling webhook: {e}")
     return '', 200
 
 @app.route('/health', methods=['GET'])
